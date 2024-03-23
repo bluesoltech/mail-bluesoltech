@@ -1,152 +1,150 @@
-import React, { useState } from "react";
-import * as XLSX from "xlsx";
-import ReactQuill from "react-quill";
-import "react-quill/dist/quill.snow.css";
-import { Editor } from "@tinymce/tinymce-react";
+import React, { useEffect, useState } from "react";
+import { IoMdAddCircleOutline } from "react-icons/io";
+import { GrSend } from "react-icons/gr";
 import axios from "axios";
+import { CiMail } from "react-icons/ci";
+import Editor from "./Editor";
+import Recipients from "./Recipients";
 
-const Home = () => {
-  const [inputs, setInputs] = useState({
-    companyTitle: "",
-    content: "",
-    pdf: null,
-    video: null,
-    image: null,
-  });
-  const handleChange = (e) => {
-    const { name, value, files } = e.target;
-    if (files) {
-      setInputs((prev) => ({ ...prev, [name]: files[0] }));
-    } else {
-      setInputs((prev) => ({ ...prev, [name]: value }));
+function Home() {
+  const [loading, setLoading] = useState(false);
+  const [subject, setSubject] = useState("");
+  const [content, setContent] = useState("");
+  const [files, setFiles] = useState([]);
+  const [recipients, setRecipients] = useState([]);
+
+  console.log(recipients);
+
+  const handleFileChange = (e) => {
+    setFiles((prevFiles) => [...prevFiles, ...Array.from(e.target.files)]);
+  };
+
+  const rederedFiles = () =>
+    files.map((file, index) => {
+      return (
+        <p
+          className="px-4 py-1 h-fit w-fit bg-black text-white rounded-xl text-sm"
+          key={index}
+        >
+          {file.name}
+        </p>
+      );
+    });
+  const rederedEmails = () =>
+    recipients.map((recipient, index) => {
+      return (
+        <p className="text-sm" key={index}>
+          {recipient.Email},
+        </p>
+      );
+    });
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    if (files.length === 0) {
+      alert("Please select at least one file.");
+      return;
     }
-  };
-  const [tableData, setTableData] = useState([]);
-
-  const handleFileUpload = (event) => {
-    const file = event.target.files[0];
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const binaryStr = e.target.result;
-      const workbook = XLSX.read(binaryStr, { type: "binary" });
-      const sheetName = workbook.SheetNames[0];
-      const worksheet = workbook.Sheets[sheetName];
-      const jsonData = XLSX.utils.sheet_to_json(worksheet);
-      setTableData(jsonData);
-    };
-    reader.readAsBinaryString(file);
-  };
-
-  const [editorContent, setEditorContent] = useState("");
-
-  const handleContentChange = (content) => {
-    setEditorContent(content);
-  };
-
-  const [file, setFile] = useState(null);
-
-  const handleFileChange = (event) => {
-    setFile(event.target.files[0]);
-  };
-
-  const handleSubmit = async (event) => {
-    event.preventDefault();
-    if (!file) return;
 
     const formData = new FormData();
-    formData.append("file", file);
+    files.forEach((file) => {
+      formData.append("files", file);
+    });
+
+    formData.append("htmlContent", content);
+    formData.append("subject", subject);
+    // console.log(recipients);
+    formData.append("recipients", JSON.stringify(recipients));
 
     try {
-      const response = await axios.post(
-        "http://localhost:3001/upload",
-        formData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-        }
-      );
-      console.log("Excel data:", response.data);
+      setLoading(true);
+      await axios.post("http://localhost:8080/api/sendMail", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+      alert("Mail Sent successfully");
+      setLoading(false);
+      window.location.reload();
     } catch (error) {
-      console.error("Error uploading file:", error);
-    }
-  };
-
-  const [content, setContent] = useState("");
-
-  const handleSend = async () => {
-    try {
-      const response = await axios.post(
-        "http://localhost:8080/api/product/getbill",
-        {
-          content,
-        }
-      );
-      console.log(response.data);
-      alert("Email sent successfully!");
-    } catch (error) {
-      console.error("Error sending email:", error);
-      alert("Failed to send email.");
+      console.error("Error uploading files and data:", error);
+      alert("Error uploading files and data");
     }
   };
 
   return (
-    <>
-      <div className="bg-white  mx-5 border-2 border-rose-100 p-6">
-        <div>
-          <ReactQuill value={content} onChange={setContent} />
-        </div>
-
-        <div className="space-y-4">
-          {/* Upload Buttons */}
-          <div className="flex justify-end">
-            <label className="flex items-center p-2 border cursor-pointer mt-4 bg-blue-500 text-white font-bold py-2 px-4 rounded transform transition duration-500 hover:bg-blue-600 hover:scale-105">
-              <span className="">Upload Excel file</span>
-              <input
-                type="file"
-                onChange={handleFileUpload}
-                className="hidden"
-                accept=".xlsx, .xls"
-              />
-            </label>
-          </div>
-          {/* Data Display Section */}
-          {tableData.length > 0 && (
-            <div className="mt-4  border rounded h-[600px] overflow-scroll">
-              <table className="min-w-full">
-                <thead>
-                  <tr>
-                    {Object.keys(tableData[0]).map((key) => (
-                      <th key={key} className="px-4 py-2 border">
-                        {key}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {tableData.map((row, index) => (
-                    <tr key={index}>
-                      {Object.values(row).map((val, idx) => (
-                        <td key={idx} className="px-4 py-2 border">
-                          {val}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-          <button
-            onClick={handleSend}
-            className="bg-blue-500 text-white font-bold py-2 px-4 rounded transform transition duration-500 hover:bg-blue-600 hover:scale-105"
+    <div className="relative p-2 bg-gray-200/80 h-screen flex flex-col items-center justify-center">
+      <h1 className="absolute flex items-center text-center uppercase text-4xl md:text-5xl lg:text-7xl  2xl:text-9xl font-light z-[-1] top-0">
+        <CiMail className="text-2xl" /> Send Mail{" "}
+        <CiMail className="text-2xl" />
+      </h1>
+      <form
+        onSubmit={handleSubmit}
+        className="bg-white rounded p-5 flex flex-col w-[95%] lg:w-[900px]"
+      >
+        <label htmlFor="subject" className="text-gray-400">
+          Subject?
+        </label>
+        <textarea
+          required
+          value={subject}
+          type="text"
+          id="subject"
+          onChange={(e) => {
+            setSubject(e.target.value);
+          }}
+          className="border-[1px] rounded focus:outline-none px-2 py-1 my-2"
+        />
+        <label htmlFor="body" className="text-gray-400">
+          Body?
+        </label>
+        <Editor content={content} setContent={setContent} />
+        <div className="flex gap-2 items-center my-2">
+          <label htmlFor="attachment" className="cursor-pointer">
+            <IoMdAddCircleOutline className="text-3xl hover:text-gray-600" />
+          </label>
+          <label
+            htmlFor="attachment"
+            className="cursor-pointer hover:text-gray-600"
           >
-            Send
-          </button>
+            Attachment
+          </label>
+          <div className="grid auto-cols-auto gap-2">{rederedFiles()}</div>
+          <input
+            required
+            className="hidden"
+            multiple
+            onChange={handleFileChange}
+            id="attachment"
+            type="file"
+          />
         </div>
-      </div>
-    </>
+        <Recipients setRecipients={setRecipients} />
+        <div className="flex gap-1">{rederedEmails()}</div>
+
+        <div className="flex justify-end">
+          {!loading && (
+            <button
+              type="submit"
+              className="flex items-center bg-blue-500 text-white px-4 py-2 rounded-xl hover:bg-blue-700 gap-2"
+            >
+              Send
+            </button>
+          )}
+          {loading && (
+            <button
+              disabled
+              type="submit"
+              className="flex items-center bg-blue-500 text-white px-4 py-2 rounded-xl cursor-wait gap-2"
+            >
+              Loading
+            </button>
+          )}
+        </div>
+      </form>
+    </div>
   );
-};
+}
 
 export default Home;
