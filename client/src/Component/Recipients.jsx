@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import * as XLSX from "xlsx";
 
 function checkKeys(obj) {
-  const requiredKeys = ["Name", "Email"];
+  const requiredKeys = ["Email"];
   return requiredKeys.every((key) => Object.keys(obj).includes(key));
 }
 

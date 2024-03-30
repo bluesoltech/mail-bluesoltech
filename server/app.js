@@ -3,6 +3,7 @@ const bodyParser = require("body-parser");
 const cors = require("cors");
 const appRoute = require("./Routes/mail.js");
 const dotenv = require("dotenv");
+const multer = require("multer");
 
 dotenv.config({ path: "./.env" });
 

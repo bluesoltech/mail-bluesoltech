@@ -5,6 +5,7 @@ import axios from "axios";
 import { CiMail } from "react-icons/ci";
 import Editor from "./Editor";
 import Recipients from "./Recipients";
+import { toast } from "react-toastify";
 
 function Home() {
   const [loading, setLoading] = useState(false);
@@ -12,8 +13,10 @@ function Home() {
   const [content, setContent] = useState("");
   const [files, setFiles] = useState([]);
   const [recipients, setRecipients] = useState([]);
-
-  console.log(recipients);
+  const [user, setUser] = useState({
+    email: "",
+    password: "",
+  });
 
   const handleFileChange = (e) => {
     setFiles((prevFiles) => [...prevFiles, ...Array.from(e.target.files)]);
@@ -56,33 +59,80 @@ function Home() {
     formData.append("subject", subject);
     // console.log(recipients);
     formData.append("recipients", JSON.stringify(recipients));
+    formData.append("user", JSON.stringify(user));
 
     try {
       setLoading(true);
-      await axios.post("http://localhost:8080/api/sendMail", formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      });
-      alert("Mail Sent successfully");
+      const res = await axios.post(
+        "http://65.2.51.122:8080/api/sendMail",
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+      console.log(res);
+      if (res.statusText != "OK") {
+        throw new Error(result.message);
+      }
+      toast.success("Mail Sent successfully");
       setLoading(false);
-      window.location.reload();
     } catch (error) {
-      console.error("Error uploading files and data:", error);
-      alert("Error uploading files and data");
+      setLoading(false);
+      console.log(error.response.data.message);
+      toast.error(error.response.data.message);
     }
   };
 
   return (
-    <div className="relative p-2 bg-gray-200/80 h-screen flex flex-col items-center justify-center">
+    <div className="relative p-2 bg-gray-200/80 min-h-screen flex flex-col items-center justify-center">
       <h1 className="absolute flex items-center text-center uppercase text-4xl md:text-5xl lg:text-7xl  2xl:text-9xl font-light z-[-1] top-0">
         <CiMail className="text-2xl" /> Send Mail{" "}
         <CiMail className="text-2xl" />
       </h1>
       <form
         onSubmit={handleSubmit}
-        className="bg-white rounded p-5 flex flex-col w-[95%] lg:w-[900px]"
+        className="bg-white rounded gap-5 p-5 flex flex-col w-[95%] lg:w-[900px]"
       >
+        <div className="flex justify-between">
+          <div className="w-[45%] flex flex-col gap-2">
+            <label className="text-gray-400" htmlFor="user_email">
+              Sender Email:
+            </label>
+            <input
+              value={user.email}
+              required
+              id="user_email"
+              type="email"
+              className="p-2 focus:outline-none border-[1px] rounded"
+              onChange={(e) => {
+                setUser({
+                  ...user,
+                  ["email"]: e.target.value,
+                });
+              }}
+            />
+          </div>
+          <div className="w-[45%] flex flex-col gap-2">
+            <label className="text-gray-400" htmlFor="user_password">
+              Sender App Password:
+            </label>
+            <input
+              required
+              value={user.password}
+              id="user_password"
+              type="password"
+              className="p-2 focus:outline-none border-[1px] rounded"
+              onChange={(e) => {
+                setUser({
+                  ...user,
+                  ["password"]: e.target.value,
+                });
+              }}
+            />
+          </div>
+        </div>
         <label htmlFor="subject" className="text-gray-400">
           Subject?
         </label>
